@@ -3,9 +3,7 @@ from othello import (
     is_game_over, get_winner, BLACK, WHITE, EMPTY
 )
 
-# ---------------------------------------------------------------------------
 # Score constants for terminal states
-# ---------------------------------------------------------------------------
 WIN_SCORE  =  1_000_000   # Returned when the maximising player wins outright
 LOSS_SCORE = -1_000_000   # Returned when the maximising player loses outright
 DRAW_SCORE = 0            # Returned on a draw
@@ -13,9 +11,7 @@ DRAW_SCORE = 0            # Returned on a draw
 DEFAULT_DEPTH = 7         # Search depth used when none is specified
 
 
-# ---------------------------------------------------------------------------
 # Core minimax with alpha-beta pruning
-# ---------------------------------------------------------------------------
 def _minimax(board, depth, alpha, beta, maximising_player, root_player, eval_fn):
     """
     Minimax search with alpha-beta pruning.
@@ -48,12 +44,11 @@ def _minimax(board, depth, alpha, beta, maximising_player, root_player, eval_fn)
         else:
             return LOSS_SCORE
 
-    # --- Depth limit: evaluate the position statically ---
+    # --- Depth limit ---
     if depth == 0:
         return eval_fn(board, root_player)
 
     current_player = BLACK if maximising_player else WHITE
-    # Correct for when root_player is WHITE: maximising maps to WHITE then
     if root_player == WHITE:
         current_player = WHITE if maximising_player else BLACK
 
@@ -78,11 +73,11 @@ def _minimax(board, depth, alpha, beta, maximising_player, root_player, eval_fn)
             )
             best = max(best, score)
             alpha = max(alpha, best)
-            if beta <= alpha:       # Beta cut-off: minimiser won't allow this
+            if beta <= alpha:
                 break
         return best
 
-    else:  # minimising
+    else:
         best = WIN_SCORE
         for move in legal_moves:
             child_board = apply_move(board, move, current_player)
@@ -92,14 +87,12 @@ def _minimax(board, depth, alpha, beta, maximising_player, root_player, eval_fn)
             )
             best = min(best, score)
             beta = min(beta, best)
-            if beta <= alpha:       # Alpha cut-off: maximiser won't allow this
+            if beta <= alpha: 
                 break
         return best
 
 
-# ---------------------------------------------------------------------------
 # Public interface: choose the best move
-# ---------------------------------------------------------------------------
 def get_best_move(board, player, eval_fn, depth=DEFAULT_DEPTH):
     """
     Return the best move for `player` using minimax with alpha-beta pruning.
@@ -121,8 +114,8 @@ def get_best_move(board, player, eval_fn, depth=DEFAULT_DEPTH):
     if not legal_moves:
         return None
 
-    best_move  = legal_moves[0]   # Default to first move — ensures we always
-    best_score = LOSS_SCORE       # return something even in a losing position
+    best_move  = legal_moves[0]
+    best_score = LOSS_SCORE 
     alpha      = LOSS_SCORE
     beta       = WIN_SCORE
 
@@ -132,7 +125,7 @@ def get_best_move(board, player, eval_fn, depth=DEFAULT_DEPTH):
             child_board,
             depth - 1,
             alpha, beta,
-            maximising_player=False,   # Opponent moves next → minimising
+            maximising_player=False,
             root_player=player,
             eval_fn=eval_fn
         )
@@ -144,9 +137,7 @@ def get_best_move(board, player, eval_fn, depth=DEFAULT_DEPTH):
     return best_move
 
 
-# ---------------------------------------------------------------------------
 # Game simulation utility
-# ---------------------------------------------------------------------------
 def play_game(black_eval_fn, white_eval_fn,
               black_depth=DEFAULT_DEPTH, white_depth=DEFAULT_DEPTH,
               verbose=False):
@@ -157,7 +148,6 @@ def play_game(black_eval_fn, white_eval_fn,
     This is the function tournament.py will call for every match-up.
 
     Parameters
-    ----------
     black_eval_fn : eval function for the BLACK agent
     white_eval_fn : eval function for the WHITE agent
     black_depth   : search depth for BLACK (default 7)
@@ -165,7 +155,6 @@ def play_game(black_eval_fn, white_eval_fn,
     verbose       : if True, print the board after each move
 
     Returns
-    -------
     winner        : BLACK, WHITE, or EMPTY (draw)
     black_score   : number of black discs at game end
     white_score   : number of white discs at game end
@@ -173,7 +162,7 @@ def play_game(black_eval_fn, white_eval_fn,
     from othello import get_initial_board, get_score, display_board
 
     board          = get_initial_board()
-    current_player = BLACK   # Black always moves first in Othello
+    current_player = BLACK
 
     if verbose:
         print("=== Game start ===")
@@ -195,7 +184,6 @@ def play_game(black_eval_fn, white_eval_fn,
                     print(f"{player_str} plays {move}")
                     display_board(board)
 
-        # Advance to the next player (handles forced passes automatically)
         next_p = get_next_player(board, current_player)
         if next_p is None:
             break
@@ -212,23 +200,20 @@ def play_game(black_eval_fn, white_eval_fn,
     return winner, black_score, white_score
 
 
-# ---------------------------------------------------------------------------
-# Quick sanity test  (run: python search.py)
-# ---------------------------------------------------------------------------
+# Test code (run: python search.py)
 if __name__ == "__main__":
     from othello import get_initial_board
 
-    # A minimal eval function: raw disc count difference (weakest possible)
     def piece_count_eval(board, player):
         return int((board == player).sum() - (board == -player).sum())
 
-    print("Testing get_best_move at depth 3 (fast check)...")
+    print("Testing get_best_move at depth 3")
     board = get_initial_board()
     move  = get_best_move(board, BLACK, piece_count_eval, depth=3)
     print(f"Best move for Black: {move}")
     assert move is not None, "Should always find a move from the start."
 
-    print("\nSimulating a short game (depth 3 for speed)...")
+    print("\nSimulating a short game")
     winner, b, w = play_game(
         piece_count_eval, piece_count_eval,
         black_depth=3, white_depth=3,
@@ -236,4 +221,4 @@ if __name__ == "__main__":
     )
     result = {BLACK: "Black", WHITE: "White", EMPTY: "Draw"}
     print(f"\nResult: {result[winner]}  |  Black: {b}  White: {w}")
-    print("All sanity checks passed.")
+    print("test run passed.")

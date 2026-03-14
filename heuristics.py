@@ -4,19 +4,17 @@ from othello import (
     get_legal_moves, get_score, is_game_over
 )
 
-# ---------------------------------------------------------------------------
 # Hand-crafted feature weights
-# ---------------------------------------------------------------------------
 # These weights define how much each strategic feature contributes to the
 # final evaluation score.  They are based on Othello domain knowledge and
 # serve as the BASELINE that the GA will later try to improve upon.
 #
 # Weight interpretation:
-#   - Positive weight → feature benefits the maximising player
-#   - Higher magnitude → feature is considered more strategically important
+#   - Positive weight: feature benefits the maximising player
+#   - Higher magnitude:  feature is considered more strategically important
 #
 # Tuning rationale (drawn from Alliot & Durand 1996 and standard Othello theory):
-#   CORNER_WEIGHT   : Corners are permanent and anchor entire edges — by far
+#   CORNER_WEIGHT   : Corners are permanent and anchor entire edges by far
 #                     the most valuable positional feature.
 #   STABILITY_WEIGHT: Stable discs (can never be flipped) provide lasting
 #                     positional advantage; second only to corners.
@@ -30,13 +28,12 @@ STABILITY_WEIGHT = 10.0
 MOBILITY_WEIGHT  = 5.0
 PIECE_WEIGHT     = 1.0
 
-# Corners and their adjacent dangerous squares
 CORNERS = [(0, 0), (0, 7), (7, 0), (7, 7)]
 
-# X-squares: diagonally adjacent to corners — giving these up is dangerous
+# X-squares: diagonally adjacent to corners giving these up is dangerous
 X_SQUARES = [(1, 1), (1, 6), (6, 1), (6, 6)]
 
-# C-squares: edge squares adjacent to corners — also risky before corner taken
+# C-squares: edge squares adjacent to corners also risky before corner taken
 C_SQUARES = [(0, 1), (1, 0), (0, 6), (1, 7),
              (6, 0), (7, 1), (6, 7), (7, 6)]
 
@@ -56,9 +53,7 @@ POSITION_TABLE = np.array([
 ], dtype=float)
 
 
-# ---------------------------------------------------------------------------
 # Feature 1: Corner control
-# ---------------------------------------------------------------------------
 def corner_score(board, player):
     """
     Compute the corner control score for `player`.
@@ -80,18 +75,17 @@ def corner_score(board, player):
         corner_owner = board[cr][cc]
 
         if corner_owner == player:
-            score += 1.0       # We own this corner — good
+            score += 1.0
         elif corner_owner == opponent:
-            score -= 1.0       # Opponent owns this corner — bad
+            score -= 1.0
         else:
-            # Corner is empty — penalise occupying its dangerous neighbours
+
             x_r, x_c = X_SQUARES[i]
             if board[x_r][x_c] == player:
-                score -= 0.5   # We sit on the X-square: risky
+                score -= 0.5
             elif board[x_r][x_c] == opponent:
-                score += 0.5   # Opponent on X-square: they are at risk
+                score += 0.5
 
-            # Two C-squares per corner
             c1 = C_SQUARES[i * 2]
             c2 = C_SQUARES[i * 2 + 1]
             for c_sq in (c1, c2):
@@ -103,9 +97,7 @@ def corner_score(board, player):
     return score
 
 
-# ---------------------------------------------------------------------------
 # Feature 2: Stability
-# ---------------------------------------------------------------------------
 def _is_stable(board, row, col, player):
     """
     A disc is STABLE if it cannot be flipped for the rest of the game.
@@ -117,27 +109,23 @@ def _is_stable(board, row, col, player):
       (c) All discs between this disc and both edges in that axis belong
           to the same player (they form an unbroken friendly line).
 
-    This is an approximation of full stability analysis — it correctly
+    This is an approximation of full stability analysis it correctly
     identifies the most common stable configurations without requiring
     the expensive recursive propagation used in world-class programs.
     """
     if board[row][col] != player:
         return False
 
-    # The four axes: (row direction, col direction)
     axes = [(0, 1), (1, 0), (1, 1), (1, -1)]
 
     for dr, dc in axes:
         stable_in_axis = False
 
-        # Check both directions along this axis
         for sign in (1, -1):
             r, c = row + sign * dr, col + sign * dc
-            # If we immediately hit an edge, this direction is stable
             if not (0 <= r < BOARD_SIZE and 0 <= c < BOARD_SIZE):
                 stable_in_axis = True
                 break
-            # Walk to the edge — stable if the line is full or all friendly
             all_friendly = True
             while 0 <= r < BOARD_SIZE and 0 <= c < BOARD_SIZE:
                 if board[r][c] == EMPTY:
@@ -150,7 +138,7 @@ def _is_stable(board, row, col, player):
                 break
 
         if not stable_in_axis:
-            return False   # Unstable in at least one axis
+            return False 
 
     return True
 
@@ -174,9 +162,7 @@ def stability_score(board, player):
     return float(player_stable - opponent_stable)
 
 
-# ---------------------------------------------------------------------------
 # Feature 3: Mobility
-# ---------------------------------------------------------------------------
 def mobility_score(board, player):
     """
     Mobility measures how many legal moves each player has.
@@ -200,9 +186,7 @@ def mobility_score(board, player):
     return (player_moves - opponent_moves) / (total + 1)
 
 
-# ---------------------------------------------------------------------------
 # Feature 4: Piece count
-# ---------------------------------------------------------------------------
 def piece_count_score(board, player):
     """
     Raw disc count difference: player's discs minus opponent's discs.
@@ -219,9 +203,7 @@ def piece_count_score(board, player):
         return float(white_count - black_count)
 
 
-# ---------------------------------------------------------------------------
 # Bonus feature: Static positional evaluation
-# ---------------------------------------------------------------------------
 def positional_score(board, player):
     """
     Score the board using the static POSITION_TABLE.
@@ -243,9 +225,7 @@ def positional_score(board, player):
     return score
 
 
-# ---------------------------------------------------------------------------
 # Combined hand-crafted evaluation function
-# ---------------------------------------------------------------------------
 def hand_crafted_eval(board, player):
     """
     The hand-crafted evaluation function — the BASELINE agent.
@@ -263,7 +243,6 @@ def hand_crafted_eval(board, player):
     -------
     float : higher values are better for `player`
     """
-    # Terminal state: return decisive score immediately
     if is_game_over(board):
         black_count, white_count = get_score(board)
         player_count   = black_count if player == BLACK else white_count
@@ -284,9 +263,7 @@ def hand_crafted_eval(board, player):
     return score
 
 
-# ---------------------------------------------------------------------------
 # GA-compatible weight vector interface
-# ---------------------------------------------------------------------------
 # The GA will evolve a weight vector [w0, w1, w2, w3] and call
 # make_weighted_eval(weights) to get a drop-in replacement for
 # hand_crafted_eval.  This keeps the feature set fixed while allowing
@@ -330,9 +307,7 @@ def make_weighted_eval(weights):
     return weighted_eval
 
 
-# ---------------------------------------------------------------------------
-# Quick sanity test  (run: python heuristics.py)
-# ---------------------------------------------------------------------------
+# test run
 if __name__ == "__main__":
     from othello import get_initial_board, apply_move, display_board
     from search import get_best_move
@@ -344,7 +319,7 @@ if __name__ == "__main__":
     assert score == 0.0, "Starting position should be perfectly symmetric."
 
     print("\n=== Testing make_weighted_eval factory ===")
-    custom_weights = [25.0, 10.0, 5.0, 1.0]   # Same as hand-crafted defaults
+    custom_weights = [25.0, 10.0, 5.0, 1.0]
     custom_eval    = make_weighted_eval(custom_weights)
     score2 = custom_eval(board, BLACK)
     print(f"Custom eval score (same weights): {score2:.2f}  (should match: {score:.2f})")
@@ -358,4 +333,4 @@ if __name__ == "__main__":
     score_after = hand_crafted_eval(board, BLACK)
     print(f"Score for Black after move: {score_after:.2f}")
 
-    print("All sanity checks passed.")
+    print("test passed.")
