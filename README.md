@@ -25,10 +25,10 @@ othello-eval-comparison/
 ├── othello.py              # Game engine: board, legal moves, rules, win detection
 ├── search.py               # Minimax with alpha-beta pruning, game simulation
 ├── heuristics.py           # Hand-crafted evaluation function + GA weight interface
-├── genetic_algorithm.py    # GA evolution of evaluation weights  (coming soon)
-├── neural_network.py       # PyTorch MLP board evaluator         (coming soon)
-├── nn_training.py          # Self-play training loop              (coming soon)
-├── tournament.py           # Round-robin tournament evaluation    (coming soon)
+├── genetic_algorithm.py    # GA evolution of evaluation weights 
+├── neural_network.py       # PyTorch MLP board evaluator      
+├── nn_training.py          # Self-play training loop             
+├── tournament.py         
 │
 ├── requirements.txt        # Python dependencies
 └── README.md
