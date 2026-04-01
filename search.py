@@ -44,7 +44,6 @@ def _minimax(board, depth, alpha, beta, maximising_player, root_player, eval_fn)
         else:
             return LOSS_SCORE
 
-    # --- Depth limit ---
     if depth == 0:
         return eval_fn(board, root_player)
 
@@ -54,9 +53,6 @@ def _minimax(board, depth, alpha, beta, maximising_player, root_player, eval_fn)
 
     legal_moves = get_legal_moves(board, current_player)
 
-    # --- Forced pass: no legal moves but game not over ---
-    # Switch perspective without decrementing depth so we don't waste a ply
-    # on a pass that the opponent was forced to make.
     if not legal_moves:
         return _minimax(
             board, depth, alpha, beta,
@@ -77,7 +73,7 @@ def _minimax(board, depth, alpha, beta, maximising_player, root_player, eval_fn)
                 break
         return best
 
-    else:
+    else:  # minimising
         best = WIN_SCORE
         for move in legal_moves:
             child_board = apply_move(board, move, current_player)
@@ -87,7 +83,7 @@ def _minimax(board, depth, alpha, beta, maximising_player, root_player, eval_fn)
             )
             best = min(best, score)
             beta = min(beta, best)
-            if beta <= alpha: 
+            if beta <= alpha:
                 break
         return best
 
@@ -114,8 +110,8 @@ def get_best_move(board, player, eval_fn, depth=DEFAULT_DEPTH):
     if not legal_moves:
         return None
 
-    best_move  = legal_moves[0]
-    best_score = LOSS_SCORE 
+    best_move  = legal_moves[0] 
+    best_score = LOSS_SCORE   
     alpha      = LOSS_SCORE
     beta       = WIN_SCORE
 
@@ -140,6 +136,7 @@ def get_best_move(board, player, eval_fn, depth=DEFAULT_DEPTH):
 # Game simulation utility
 def play_game(black_eval_fn, white_eval_fn,
               black_depth=DEFAULT_DEPTH, white_depth=DEFAULT_DEPTH,
+              start_board=None, start_player=BLACK,
               verbose=False):
     """
     Simulate a full game between two agents and return the result.
@@ -148,21 +145,26 @@ def play_game(black_eval_fn, white_eval_fn,
     This is the function tournament.py will call for every match-up.
 
     Parameters
+    ----------
     black_eval_fn : eval function for the BLACK agent
     white_eval_fn : eval function for the WHITE agent
     black_depth   : search depth for BLACK (default 7)
     white_depth   : search depth for WHITE (default 7)
+    start_board   : optional starting board (numpy array). If None,
+                    the standard Othello opening position is used.
+    start_player  : the player to move first from start_board (default BLACK)
     verbose       : if True, print the board after each move
 
     Returns
+    -------
     winner        : BLACK, WHITE, or EMPTY (draw)
     black_score   : number of black discs at game end
     white_score   : number of white discs at game end
     """
     from othello import get_initial_board, get_score, display_board
 
-    board          = get_initial_board()
-    current_player = BLACK
+    board          = start_board.copy() if start_board is not None else get_initial_board()
+    current_player = start_player
 
     if verbose:
         print("=== Game start ===")
@@ -200,20 +202,20 @@ def play_game(black_eval_fn, white_eval_fn,
     return winner, black_score, white_score
 
 
-# Test code (run: python search.py)
+#sanity test
 if __name__ == "__main__":
     from othello import get_initial_board
 
     def piece_count_eval(board, player):
         return int((board == player).sum() - (board == -player).sum())
 
-    print("Testing get_best_move at depth 3")
+    print("Testing get_best_move at depth 3 (fast check)...")
     board = get_initial_board()
     move  = get_best_move(board, BLACK, piece_count_eval, depth=3)
     print(f"Best move for Black: {move}")
     assert move is not None, "Should always find a move from the start."
 
-    print("\nSimulating a short game")
+    print("\nSimulating a short game (depth 3 for speed)...")
     winner, b, w = play_game(
         piece_count_eval, piece_count_eval,
         black_depth=3, white_depth=3,
@@ -221,4 +223,4 @@ if __name__ == "__main__":
     )
     result = {BLACK: "Black", WHITE: "White", EMPTY: "Draw"}
     print(f"\nResult: {result[winner]}  |  Black: {b}  White: {w}")
-    print("test run passed.")
+    print("All sanity checks passed.")

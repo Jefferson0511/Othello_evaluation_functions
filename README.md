@@ -1,5 +1,9 @@
-
 # Comparing Evaluation Function Paradigms in Othello
+
+**Foundations of Artificial Intelligence — Final Project**
+Jefferson David | Northeastern University | Spring 2026
+
+---
 
 ## Overview
 
@@ -21,10 +25,10 @@ othello-eval-comparison/
 ├── othello.py              # Game engine: board, legal moves, rules, win detection
 ├── search.py               # Minimax with alpha-beta pruning, game simulation
 ├── heuristics.py           # Hand-crafted evaluation function + GA weight interface
-├── genetic_algorithm.py    # GA evolution of evaluation weights  (In progress)
-├── neural_network.py       # PyTorch MLP board evaluator         (In progress)
-├── nn_training.py          # Self-play training loop              (In progress)
-├── tournament.py           # Round-robin tournament evaluation    (In progress)
+├── genetic_algorithm.py    # GA evolution of evaluation weights  (coming soon)
+├── neural_network.py       # PyTorch MLP board evaluator         (coming soon)
+├── nn_training.py          # Self-play training loop              (coming soon)
+├── tournament.py           # Round-robin tournament evaluation    (coming soon)
 │
 ├── requirements.txt        # Python dependencies
 └── README.md
@@ -67,6 +71,20 @@ Expected output: starting position scores 0.00 (symmetric), custom weight factor
 
 ---
 
+## Current Status
+
+| Component | Status |
+|---|---|
+| Game engine (`othello.py`) | ✅ Complete |
+| Search (`search.py`) | ✅ Complete |
+| Hand-crafted heuristic (`heuristics.py`) | ✅ Complete |
+| Genetic algorithm (`genetic_algorithm.py`) | ✅ Complete |
+| Neural network (`neural_network.py`) | ✅ Complete |
+| NN training (`nn_training.py`) | ✅ Complete |
+| Tournament (`tournament.py`) | ✅ Complete |
+
+---
+
 ## Design Decisions
 
 **Board encoding:** 1 = black, -1 = white, 0 = empty. Using -1 for white means any piece can be flipped by multiplying by -1, and the neural network input encoding is clean and symmetric.
@@ -79,9 +97,6 @@ Expected output: starting position scores 0.00 (symmetric), custom weight factor
 
 ## References
 
-Alliot, J.M., & Durand, N. (1996). A genetic algorithm to improve an Othello program.
-Artificial Evolution (AE 1995), LNCS Vol. 1063, Springer, pp. 307–319.
+Alliot, J.M., & Durand, N. (1996). A genetic algorithm to improve an Othello program. *Artificial Evolution (AE 1995), LNCS Vol. 1063*. Springer, pp. 307–319.
 
-
-Tesauro, G. (1995). Temporal difference learning and TD-Gammon. 
-Communications of the ACM, 38(3), 58–68.
+Tesauro, G. (1995). Temporal difference learning and TD-Gammon. *Communications of the ACM, 38*(3), 58–68.
