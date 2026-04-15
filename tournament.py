@@ -18,15 +18,6 @@ NN_MODEL_PATH     = "othello_net.pth"
 
 
 def _random_start():
-    """
-    Generate a randomised mid-game starting position.
-
-    Plays 8-18 random legal moves from the standard opening so that
-    deterministic minimax agents face different positions each game —
-    directly following Alliot & Durand's fitness evaluation methodology.
-
-    Returns (board, current_player).
-    """
     board  = get_initial_board()
     player = BLACK
     for _ in range(random.randint(8, 18)):
@@ -94,23 +85,6 @@ def run_matchup(name_a, eval_a, name_b, eval_b,
 
 def run_tournament(agents, num_games=GAMES_PER_MATCHUP,
                    depth=TOURNAMENT_DEPTH, verbose=True):
-    """
-    Run a full round-robin tournament between all agents.
-
-    Every ordered pair (A, B) plays num_games games with A as BLACK and
-    B as WHITE, then the roles are swapped for another num_games games.
-    This controls for any first-mover advantage.
-
-    Parameters
-    ----------
-    agents    : list of (name, eval_fn) tuples
-    num_games : games per ordered pair
-    depth     : minimax search depth
-
-    Returns
-    -------
-    results : dict mapping agent name → dict of tournament statistics
-    """
     names     = [a[0] for a in agents]
     eval_fns  = {a[0]: a[1] for a in agents}
     n         = len(agents)
