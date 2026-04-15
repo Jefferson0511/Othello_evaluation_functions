@@ -37,7 +37,6 @@ def board_to_input(board, player):
     )
 
 
-# Network definition
 class OthelloNet(nn.Module):
     """
     Multilayer perceptron for Othello position evaluation.
@@ -107,7 +106,6 @@ class OthelloNet(nn.Module):
             return float(score.item())
 
 
-# Eval function factory
 def make_nn_eval(model):
     """
     Wrap a trained OthelloNet model in an evaluation function compatible
@@ -142,7 +140,6 @@ def make_nn_eval(model):
     return nn_eval
 
 
-# Model persistence
 def save_model(model, path="othello_net.pth"):
     """
     Save the model's state dictionary to disk.
@@ -175,20 +172,17 @@ def load_model(path="othello_net.pth"):
     return model
 
 
-# sanity test
 if __name__ == "__main__":
     from othello import get_initial_board, apply_move, get_legal_moves, display_board
 
     print(f"Using device: {DEVICE}")
 
-    # --- Test 1: Model initialisation ---
     print("\n=== Test 1: Model initialisation ===")
     model = OthelloNet().to(DEVICE)
     print(model)
     total_params = sum(p.numel() for p in model.parameters())
     print(f"Total parameters: {total_params}")
 
-    # --- Test 2: board_to_input encoding ---
     print("\n=== Test 2: Input encoding ===")
     board = get_initial_board()
     x_black = board_to_input(board, BLACK)
@@ -199,7 +193,6 @@ if __name__ == "__main__":
     assert x_black.shape == torch.Size([64]), "Input must be shape (64,)"
     assert float(x_black.sum()) == 0.0, "Starting board is symmetric — sum should be 0."
 
-    # --- Test 3: Forward pass ---
     print("\n=== Test 3: Forward pass ===")
     score_black = model.evaluate(board, BLACK)
     score_white = model.evaluate(board, WHITE)
@@ -208,20 +201,17 @@ if __name__ == "__main__":
     assert -1.0 <= score_black <= 1.0, "Output must be in (-1, 1)"
     assert -1.0 <= score_white <= 1.0, "Output must be in (-1, 1)"
 
-    # --- Test 4: make_nn_eval interface ---
     print("\n=== Test 4: make_nn_eval interface ===")
     nn_eval = make_nn_eval(model)
     score   = nn_eval(board, BLACK)
     print(f"nn_eval(board, BLACK) = {score:.4f}")
     assert isinstance(score, float), "nn_eval must return a Python float."
 
-    # --- Test 5: Terminal state handling ---
     print("\n=== Test 5: Terminal state handling ===")
     from othello import is_game_over
     score_terminal = nn_eval(board, BLACK)
     print(f"Non-terminal score: {score_terminal:.4f}  (network output)")
 
-    # --- Test 6: Save and load ---
     print("\n=== Test 6: Save and load ===")
     save_model(model, "test_model.pth")
     loaded_model = load_model("test_model.pth")

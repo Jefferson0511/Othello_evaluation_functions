@@ -5,23 +5,18 @@ from othello import (
     BLACK, WHITE, EMPTY, get_initial_board, apply_move,
     get_legal_moves, get_score
 )
-from heuristics import hand_crafted_eval, make_weighted_eval
+from genetic_algorithm import load_weights
 from neural_network import OthelloNet, make_nn_eval, load_model, DEVICE
 from search import play_game, DEFAULT_DEPTH
 
-# Tournament settings
-GAMES_PER_MATCHUP = 20      # Games played per ordered pair (A vs B)
-                            # Each matchup is played from randomised starting
-                            # positions so deterministic agents produce
-                            # statistically meaningful win rates
-TOURNAMENT_DEPTH  = 5       # Search depth for all agents during tournament
-                            # (deeper than training for stronger play)
+GAMES_PER_MATCHUP = 20 
+TOURNAMENT_DEPTH  = 5  
 
-GA_WEIGHTS_PATH   = None
+from heuristics import hand_crafted_eval, make_weighted_eval
+GA_WEIGHTS_PATH   = "ga_weights.npy"
 NN_MODEL_PATH     = "othello_net.pth"
 
 
-# Starting position randomiser
 def _random_start():
     """
     Generate a randomised mid-game starting position.
@@ -46,29 +41,10 @@ def _random_start():
     return board, player
 
 
-# Single matchup
 def run_matchup(name_a, eval_a, name_b, eval_b,
                 num_games=GAMES_PER_MATCHUP, depth=TOURNAMENT_DEPTH,
                 verbose=True):
-    """
-    Play num_games games between agent A (BLACK) and agent B (WHITE)
-    from randomised starting positions.
 
-    Parameters
-    ----------
-    name_a, name_b   : display names for the two agents
-    eval_a, eval_b   : evaluation functions for A and B
-    num_games        : number of games to play
-    depth            : minimax search depth for both agents
-    verbose          : print per-game results if True
-
-    Returns
-    -------
-    dict with keys:
-        wins_a, wins_b, draws : int counts
-        win_rate_a            : float in [0, 1]
-        avg_disc_diff         : float — average final disc difference (A - B)
-    """
     wins_a    = 0
     wins_b    = 0
     draws     = 0
@@ -105,7 +81,7 @@ def run_matchup(name_a, eval_a, name_b, eval_b,
             print(f"  {g:<6} {result:<18} {b_score}-{w_score}")
 
     total      = wins_a + wins_b + draws
-    win_rate_a = (wins_a + 0.5 * draws) / total
+    win_rate_a = (wins_a + 0.5 * draws) / total 
 
     return {
         "wins_a"       : wins_a,
@@ -116,7 +92,6 @@ def run_matchup(name_a, eval_a, name_b, eval_b,
     }
 
 
-# Round-robin tournament
 def run_tournament(agents, num_games=GAMES_PER_MATCHUP,
                    depth=TOURNAMENT_DEPTH, verbose=True):
     """
@@ -140,7 +115,6 @@ def run_tournament(agents, num_games=GAMES_PER_MATCHUP,
     eval_fns  = {a[0]: a[1] for a in agents}
     n         = len(agents)
 
-    # Initialise result table
     results = {
         name: {
             "wins"      : 0,
@@ -179,7 +153,6 @@ def run_tournament(agents, num_games=GAMES_PER_MATCHUP,
                               num_games, depth, verbose)
             matchup_log.append((name_a, name_b, res))
 
-            # Update standings
             results[name_a]["wins"]       += res["wins_a"]
             results[name_a]["losses"]     += res["wins_b"]
             results[name_a]["draws"]      += res["draws"]
@@ -221,36 +194,22 @@ def run_tournament(agents, num_games=GAMES_PER_MATCHUP,
     return results, matchup_log
 
 
-# Load agents
 def load_agents(ga_weights=None, nn_path=NN_MODEL_PATH):
-    """
-    Load all three evaluation agents.
-
-    Parameters
-    ----------
-    ga_weights : list of 4 floats (evolved weights), or None to use a
-                 stand-in (hand-crafted weights scaled slightly differently)
-    nn_path    : path to a saved OthelloNet model file
-
-    Returns
-    -------
-    list of (name, eval_fn) tuples ready for run_tournament
-    """
     agents = []
 
-    # Agent 1: Hand-crafted heuristic
     agents.append(("Hand-Crafted", hand_crafted_eval))
 
-    # Agent 2: GA-evolved heuristic
     if ga_weights is not None:
         ga_eval = make_weighted_eval(ga_weights)
         agents.append(("GA-Evolved", ga_eval))
+    elif os.path.exists(GA_WEIGHTS_PATH):
+        ga_weights = load_weights(GA_WEIGHTS_PATH)
+        agents.append(("GA-Evolved", make_weighted_eval(ga_weights)))
     else:
-        print("[Warning] No GA weights provided — using stand-in weights.")
-        stand_in = make_weighted_eval([128.0, 17.0, 20.0, 1.4])
-        agents.append(("GA-Evolved", stand_in))
+        print("[Warning] No GA weights found — using stand-in weights.")
+        print("          Run: python genetic_algorithm.py --full")
+        agents.append(("GA-Evolved", make_weighted_eval([128.0, 17.0, 20.0, 1.4])))
 
-    # Agent 3: Neural network
     if os.path.exists(nn_path):
         nn_model = load_model(nn_path)
         agents.append(("Neural-Net", make_nn_eval(nn_model)))
@@ -260,27 +219,42 @@ def load_agents(ga_weights=None, nn_path=NN_MODEL_PATH):
 
     return agents
 
-
-# ]sanity test]
 if __name__ == "__main__":
-    print("Running tournament sanity check (3 games per matchup, depth 2)...\n")
+    import sys
 
-    agents = load_agents(ga_weights=None, nn_path=NN_MODEL_PATH)
+    full_run = "--full" in sys.argv
 
-    results, log = run_tournament(
-        agents,
-        num_games=3,       
-        depth=2,            
-        verbose=True
-    )
+    if full_run:
+        print("Starting FULL tournament...")
+        print(f"Games per matchup: {GAMES_PER_MATCHUP}  |  Depth: {TOURNAMENT_DEPTH}\n")
+        agents = load_agents(ga_weights=None, nn_path=NN_MODEL_PATH)
+        results, log = run_tournament(
+            agents,
+            num_games=GAMES_PER_MATCHUP,
+            depth=TOURNAMENT_DEPTH,
+            verbose=True
+        )
+        print("\nFull tournament complete.")
 
-    for name, r in results.items():
-        assert r["games"] > 0,    f"{name} must have played at least one game."
-        assert r["wins"] + r["losses"] + r["draws"] == r["games"], \
-            f"{name} win/loss/draw counts must sum to total games."
+    else:
+        print("Running tournament sanity check (3 games per matchup, depth 2)...\n")
 
-    print("\nSanity checks passed — tournament is working correctly.")
-    print("\nTo run the full tournament:")
-    print("  1. Run genetic_algorithm.py and save evolved weights")
-    print("  2. Run nn_training.py to train the neural network")
-    print("  3. Call run_tournament() with GAMES_PER_MATCHUP=20, TOURNAMENT_DEPTH=5")
+        agents = load_agents(ga_weights=None, nn_path=NN_MODEL_PATH)
+
+        results, log = run_tournament(
+            agents,
+            num_games=3,
+            depth=2,
+            verbose=True
+        )
+
+        for name, r in results.items():
+            assert r["games"] > 0, f"{name} must have played at least one game."
+            assert r["wins"] + r["losses"] + r["draws"] == r["games"], \
+                f"{name} win/loss/draw counts must sum to total games."
+
+        print("\nSanity checks passed — tournament is working correctly.")
+        print("\nTo run the full tournament:")
+        print("  1. Run: python genetic_algorithm.py --full")
+        print("  2. Run: python nn_training.py --full")
+        print("  3. Run: python tournament.py --full")

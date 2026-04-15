@@ -4,25 +4,6 @@ from othello import (
     get_legal_moves, get_score, is_game_over
 )
 
-# Hand-crafted feature weights
-# These weights define how much each strategic feature contributes to the
-# final evaluation score.  They are based on Othello domain knowledge and
-# serve as the BASELINE that the GA will later try to improve upon.
-#
-# Weight interpretation:
-#   - Positive weight: feature benefits the maximising player
-#   - Higher magnitude:  feature is considered more strategically important
-#
-# Tuning rationale (drawn from Alliot & Durand 1996 and standard Othello theory):
-#   CORNER_WEIGHT   : Corners are permanent and anchor entire edges by far
-#                     the most valuable positional feature.
-#   STABILITY_WEIGHT: Stable discs (can never be flipped) provide lasting
-#                     positional advantage; second only to corners.
-#   MOBILITY_WEIGHT : Restricting the opponent's moves is critical in the
-#                     early/mid game; less important in the endgame.
-#   PIECE_WEIGHT    : Raw disc count matters only in the endgame — chasing
-#                     pieces early is a well-known beginner mistake.
-# ---------------------------------------------------------------------------
 CORNER_WEIGHT   = 25.0
 STABILITY_WEIGHT = 10.0
 MOBILITY_WEIGHT  = 5.0
@@ -30,17 +11,13 @@ PIECE_WEIGHT     = 1.0
 
 CORNERS = [(0, 0), (0, 7), (7, 0), (7, 7)]
 
-# X-squares: diagonally adjacent to corners giving these up is dangerous
 X_SQUARES = [(1, 1), (1, 6), (6, 1), (6, 6)]
 
-# C-squares: edge squares adjacent to corners also risky before corner taken
+
 C_SQUARES = [(0, 1), (1, 0), (0, 6), (1, 7),
              (6, 0), (7, 1), (6, 7), (7, 6)]
 
-# Static positional values for every square on the board.
-# These encode the relative long-term value of each square based on
-# standard Othello theory (similar to Alliot & Durand's Table 1).
-# Corners > edges > interior > X/C-squares (negative: dangerous early on).
+
 POSITION_TABLE = np.array([
     [ 500, -150,  30,  10,  10,  30, -150,  500],
     [-150, -250,   0,   0,   0,   0, -250, -150],
@@ -53,20 +30,8 @@ POSITION_TABLE = np.array([
 ], dtype=float)
 
 
-# Feature 1: Corner control
 def corner_score(board, player):
-    """
-    Compute the corner control score for `player`.
 
-    Corners are permanent — once captured they can never be flipped.
-    This function rewards owning corners and penalises:
-      - X-squares (diagonal to empty corners): dangerously likely to gift
-        the corner to the opponent.
-      - C-squares (edge squares adjacent to empty corners): risky for the
-        same reason, though less severely.
-
-    Returns a float representing net corner advantage for `player`.
-    """
     opponent = -player
     score = 0.0
 
@@ -97,22 +62,7 @@ def corner_score(board, player):
     return score
 
 
-# Feature 2: Stability
 def _is_stable(board, row, col, player):
-    """
-    A disc is STABLE if it cannot be flipped for the rest of the game.
-
-    A disc at (row, col) is stable when, in every axis (horizontal,
-    vertical, and both diagonals), at least one of the following holds:
-      (a) The entire row/column/diagonal in that axis is filled, OR
-      (b) The disc is on the board edge in that axis, OR
-      (c) All discs between this disc and both edges in that axis belong
-          to the same player (they form an unbroken friendly line).
-
-    This is an approximation of full stability analysis it correctly
-    identifies the most common stable configurations without requiring
-    the expensive recursive propagation used in world-class programs.
-    """
     if board[row][col] != player:
         return False
 
@@ -144,10 +94,7 @@ def _is_stable(board, row, col, player):
 
 
 def stability_score(board, player):
-    """
-    Return the net number of stable discs: player's stable discs minus
-    the opponent's stable discs.
-    """
+
     opponent = -player
     player_stable   = 0
     opponent_stable = 0
@@ -162,20 +109,8 @@ def stability_score(board, player):
     return float(player_stable - opponent_stable)
 
 
-# Feature 3: Mobility
 def mobility_score(board, player):
-    """
-    Mobility measures how many legal moves each player has.
 
-    High mobility = more options = strategic flexibility.
-    Restricting the opponent's mobility is a key mid-game strategy.
-
-    Returns the normalised mobility advantage for `player`:
-        (player_moves - opponent_moves) / (player_moves + opponent_moves + 1)
-
-    Normalisation prevents the raw move count from dominating other features
-    early in the game when many moves are available.
-    """
     opponent      = -player
     player_moves  = len(get_legal_moves(board, player))
     opponent_moves = len(get_legal_moves(board, opponent))
@@ -186,16 +121,8 @@ def mobility_score(board, player):
     return (player_moves - opponent_moves) / (total + 1)
 
 
-# Feature 4: Piece count
 def piece_count_score(board, player):
-    """
-    Raw disc count difference: player's discs minus opponent's discs.
 
-    This is intentionally given the lowest weight because chasing pieces
-    early is a well-known strategic mistake in Othello — fewer pieces
-    often means more mobility. Piece count becomes dominant only in the
-    endgame when the board is nearly full.
-    """
     black_count, white_count = get_score(board)
     if player == BLACK:
         return float(black_count - white_count)
@@ -203,17 +130,7 @@ def piece_count_score(board, player):
         return float(white_count - black_count)
 
 
-# Bonus feature: Static positional evaluation
 def positional_score(board, player):
-    """
-    Score the board using the static POSITION_TABLE.
-
-    Each occupied square contributes its table value — positive for the
-    player's discs, negative for the opponent's.  This encodes standard
-    Othello positional wisdom (corners good, X-squares bad, etc.) and
-    was inspired directly by Alliot & Durand's evaluation function
-    structure.
-    """
     opponent = -player
     score = 0.0
     for r in range(BOARD_SIZE):
@@ -225,24 +142,7 @@ def positional_score(board, player):
     return score
 
 
-# Combined hand-crafted evaluation function
 def hand_crafted_eval(board, player):
-    """
-    The hand-crafted evaluation function — the BASELINE agent.
-
-    Combines all four strategic features using hand-tuned weights.
-    This is the evaluation function that the GA will attempt to beat by
-    evolving better weights for the same feature set.
-
-    Parameters
-    ----------
-    board  : numpy array — current board state
-    player : BLACK or WHITE — the player to evaluate for
-
-    Returns
-    -------
-    float : higher values are better for `player`
-    """
     if is_game_over(board):
         black_count, white_count = get_score(board)
         player_count   = black_count if player == BLACK else white_count
@@ -263,26 +163,8 @@ def hand_crafted_eval(board, player):
     return score
 
 
-# GA-compatible weight vector interface
-# The GA will evolve a weight vector [w0, w1, w2, w3] and call
-# make_weighted_eval(weights) to get a drop-in replacement for
-# hand_crafted_eval.  This keeps the feature set fixed while allowing
-# the GA to discover better weights.
-
 def make_weighted_eval(weights):
-    """
-    Factory function: given a weight vector, return an evaluation function
-    with the same signature as hand_crafted_eval.
 
-    Parameters
-    ----------
-    weights : sequence of 4 floats
-        [corner_w, stability_w, mobility_w, piece_count_w]
-
-    Returns
-    -------
-    callable(board, player) → float
-    """
     w_corner, w_stability, w_mobility, w_piece = weights
 
     def weighted_eval(board, player):
@@ -307,7 +189,6 @@ def make_weighted_eval(weights):
     return weighted_eval
 
 
-# test run
 if __name__ == "__main__":
     from othello import get_initial_board, apply_move, display_board
     from search import get_best_move
